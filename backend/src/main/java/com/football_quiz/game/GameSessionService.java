@@ -1,6 +1,7 @@
 package com.football_quiz.game;
 
 import com.football_quiz.dto.AnswerResponse;
+import com.football_quiz.dto.GameResultResponse;
 import com.football_quiz.dto.GameStateResponse;
 import com.football_quiz.dto.QuestionResponse;
 import com.football_quiz.model.Difficulty;
@@ -186,6 +187,32 @@ public class GameSessionService {
                 question.getText(),
                 question.getOptions(),
                 question.getDifficulty()
+        );
+    }
+
+    public GameResultResponse getGameResult(Long id) {
+        GameSession session = gameSessionRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Game session not found"));
+
+        long elapsedSeconds = Duration.between(
+                session.getStartTime(),
+                Instant.now()
+        ).getSeconds();
+
+        if (elapsedSeconds >= 60 && session.getStatus() != GameStatus.FINISHED) {
+            session.setStatus(GameStatus.FINISHED);
+            gameSessionRepository.save(session);
+        }
+
+        if (session.getStatus() != GameStatus.FINISHED) {
+            throw new IllegalStateException("Game is still in progress");
+        }
+
+        return new GameResultResponse(
+                session.getScore(),
+                session.getCorrectAnswers(),
+                session.getQuestionOrder().size(),
+                session.getStatus()
         );
     }
 }

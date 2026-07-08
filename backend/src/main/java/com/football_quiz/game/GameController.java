@@ -2,6 +2,7 @@ package com.football_quiz.game;
 
 import com.football_quiz.dto.AnswerRequest;
 import com.football_quiz.dto.AnswerResponse;
+import com.football_quiz.dto.GameResultResponse;
 import com.football_quiz.dto.GameStateResponse;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,6 +18,11 @@ public class GameController {
     @GetMapping("/{id}")
     public GameStateResponse getGameState(@ PathVariable Long id) {
         return gameSessionService.getGameState(id);
+    }
+
+    @GetMapping("/{id}/result")
+    public GameResultResponse getGameResult(@PathVariable Long id) {
+        return gameSessionService.getGameResult(id);
     }
 
     @PostMapping("/start")
