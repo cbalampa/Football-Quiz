@@ -1,6 +1,8 @@
 package com.football_quiz;
 
 import com.football_quiz.dto.AnswerResponse;
+import com.football_quiz.dto.GameResultResponse;
+import com.football_quiz.dto.GameStateResponse;
 import com.football_quiz.game.GameSession;
 import com.football_quiz.game.GameSessionService;
 import com.football_quiz.game.GameStatus;
@@ -16,10 +18,12 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
@@ -49,9 +53,6 @@ class GameSessionServiceTest {
                 0,
                 Difficulty.HARD
         );
-
-        when(gameSessionRepository.save(any(GameSession.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     @Test
@@ -63,6 +64,8 @@ class GameSessionServiceTest {
 
         when(gameSessionRepository.findById(1L)).thenReturn(Optional.of(session));
         when(questionRepository.findById(1L)).thenReturn(Optional.of(hardQuestion));
+        when(gameSessionRepository.save(any(GameSession.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         gameSessionService.submitAnswer(1L, 0);
 
@@ -81,6 +84,8 @@ class GameSessionServiceTest {
 
         when(gameSessionRepository.findById(1L)).thenReturn(Optional.of(session));
         when(questionRepository.findById(1L)).thenReturn(Optional.of(hardQuestion));
+        when(gameSessionRepository.save(any(GameSession.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         gameSessionService.submitAnswer(1L, 1);
 
@@ -98,6 +103,8 @@ class GameSessionServiceTest {
 
         when(gameSessionRepository.findById(1L)).thenReturn(Optional.of(session));
         when(questionRepository.findById(1L)).thenReturn(Optional.of(hardQuestion));
+        when(gameSessionRepository.save(any(GameSession.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         gameSessionService.submitAnswer(1L, 1);
 
@@ -113,11 +120,90 @@ class GameSessionServiceTest {
 
         when(gameSessionRepository.findById(1L)).thenReturn(Optional.of(session));
         when(questionRepository.findById(1L)).thenReturn(Optional.of(hardQuestion));
+        when(gameSessionRepository.save(any(GameSession.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         AnswerResponse response = gameSessionService.submitAnswer(1L, 0);
 
         assertThat(session.getStatus()).isEqualTo(GameStatus.FINISHED);
         assertThat(response.status()).isEqualTo(GameStatus.FINISHED);
         assertThat(response.question()).isNull();
+    }
+
+    @Test
+    void getGameState_afterTimeout_shouldFinishGame() {
+        GameSession session = new GameSession(
+                Instant.now().minus(61, ChronoUnit.SECONDS),
+                List.of(1L)
+        );
+
+        when(gameSessionRepository.findById(1L)).thenReturn(Optional.of(session));
+        when(gameSessionRepository.save(any(GameSession.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        GameStateResponse response = gameSessionService.getGameState(1L);
+
+        assertThat(session.getStatus()).isEqualTo(GameStatus.FINISHED);
+        assertThat(response.status()).isEqualTo(GameStatus.FINISHED);
+        assertThat(response.remainingSeconds()).isZero();
+        assertThat(response.question()).isNull();
+    }
+
+    @Test
+    void getGameResult_whenGameIsActive_shouldThrowException() {
+        GameSession session = new GameSession(
+                Instant.now(),
+                List.of(1L)
+        );
+
+        when(gameSessionRepository.findById(1L)).thenReturn(Optional.of(session));
+
+        assertThatThrownBy(() -> gameSessionService.getGameResult(1L))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Game is still in progress");
+    }
+
+    @Test
+    void getGameResult_afterTimeout_shouldFinishGame() {
+        GameSession session = new GameSession(
+                Instant.now().minus(61, ChronoUnit.SECONDS),
+                List.of(1L, 2L, 3L)
+        );
+
+        session.setScore(50);
+        session.setCorrectAnswers(5);
+
+        when(gameSessionRepository.findById(1L)).thenReturn(Optional.of(session));
+        when(gameSessionRepository.save(any(GameSession.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        GameResultResponse response = gameSessionService.getGameResult(1L);
+
+        assertThat(session.getStatus()).isEqualTo(GameStatus.FINISHED);
+        assertThat(response.score()).isEqualTo(50);
+        assertThat(response.correctAnswers()).isEqualTo(5);
+        assertThat(response.totalQuestions()).isEqualTo(3);
+        assertThat(response.status()).isEqualTo(GameStatus.FINISHED);
+    }
+
+    @Test
+    void getGameResult_finishedGame_shouldReturnResult() {
+        GameSession session = new GameSession(
+                Instant.now(),
+                List.of(1L, 2L, 3L)
+        );
+
+        session.setStatus(GameStatus.FINISHED);
+        session.setScore(75);
+        session.setCorrectAnswers(7);
+
+        when(gameSessionRepository.findById(1L)).thenReturn(Optional.of(session));
+
+        GameResultResponse response = gameSessionService.getGameResult(1L);
+
+        assertThat(response.score()).isEqualTo(75);
+        assertThat(response.correctAnswers()).isEqualTo(7);
+        assertThat(response.totalQuestions()).isEqualTo(3);
+        assertThat(response.status()).isEqualTo(GameStatus.FINISHED);
     }
 }
