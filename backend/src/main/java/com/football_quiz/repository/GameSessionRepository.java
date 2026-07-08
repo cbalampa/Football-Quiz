@@ -1,7 +1,7 @@
 package com.football_quiz.repository;
 
-import com.football_quiz.model.Question;
+import com.football_quiz.game.GameSession;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface GameSessionRepository extends JpaRepository<Question, Long> {
+public interface GameSessionRepository extends JpaRepository<GameSession, Long> {
 }
