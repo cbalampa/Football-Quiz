@@ -1,8 +1,7 @@
 package com.football_quiz.game;
 
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import com.football_quiz.dto.GameStateResponse;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/game")
@@ -11,6 +10,11 @@ public class GameController {
 
     public GameController(GameSessionService gameSessionService) {
         this.gameSessionService = gameSessionService;
+    }
+
+    @GetMapping("/{id}")
+    public GameStateResponse getGameState(@ PathVariable Long id) {
+        return gameSessionService.getGameState(id);
     }
 
     @PostMapping("/start")
